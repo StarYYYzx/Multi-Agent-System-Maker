@@ -11,27 +11,31 @@
 ```
 Multi-Agent-System-Maker/
 ├── frontend/                    # React + Vite + AntV X6
-│   └── src/
+│   │   ├── index.html           #   Vite 入口 HTML
+│   │   ├── tsconfig.json        #   TypeScript 编译配置
+│   │   ├── vite-env.d.ts        #   Vite 类型声明
+│   │   └── src/
 │       ├── components/canvas/   # 画布编辑器（X6 Graph + 6 种自定义节点）
 │       │   └── nodes/           #   CircleNode / RectNode / DiamondNode
 │       ├── engine/              # DAG 工作流引擎
 │       │   ├── types.ts         #   核心数据模型（8 个类型定义）
 │       │   ├── topology.ts      #   拓扑解析（环路检测 + Kahn 排序 + 约束校验）
 │       │   ├── scheduler.ts     #   调度器（分层执行 + Promise.all 并行 + 120s 超时）
-│       │   └── executor.ts      #   节点执行器（6 种节点逻辑 + LLM 调用）
-│       ├── pages/               # 4 个 SPA 页面
+│       │   └── executor.ts      #   节点执行器（6 种节点逻辑 + LLM 调用 + AbortController）
+│       ├── pages/               # 5 个 SPA 页面
 │       │   ├── BlueprintListPage.tsx  # `/`           蓝图列表 + 执行历史
-│       │   ├── EditorPage.tsx         # `/editor/:id` 画布编辑器
+│       │   ├── EditorPage.tsx         # `/editor/:id` 画布编辑器 + 主Agent智能生成
 │       │   ├── ExecutePage.tsx        # `/execute/:id` 流程运行可视化
-│       │   └── LogDetailPage.tsx      # `/logs/:logId` 执行日志详情
+│       │   ├── LogDetailPage.tsx      # `/logs/:logId` 执行日志详情
+│       │   └── SettingsPage.tsx       # `/settings`   API Key 配置页
 │       ├── services/            # api.ts（后端封装）/ storage.ts（LocalStorage CRUD）
 │       ├── store/               # Zustand 状态管理（蓝图编辑 + 撤销栈）
 │       └── templates/           # 4 类内置 Prompt 模板 + 场景关键词表
 │
 ├── backend/                     # FastAPI
 │   └── app/
-│       ├── api/routes/          # config.py（Key 管理）/ llm.py（对话）/ prompt.py（生成）
-│       ├── services/            # key_manager / llm_gateway（DeepSeek）/ prompt_service
+│       ├── api/routes/          # config.py / llm.py / prompt.py / workflow.py
+│       ├── services/            # key_manager / llm_gateway / prompt_service / workflow_service
 │       ├── models/schemas.py    # Pydantic 数据模型
 │       └── main.py              # FastAPI 入口 + CORS
 │
@@ -45,12 +49,14 @@ Multi-Agent-System-Maker/
 |---------|------|
 | 可视化画布 | 拖拽创建 6 种节点（开始/Agent/条件分支/并行分支/汇总/结束），鼠标连线构建 DAG |
 | 节点配置 | 右侧抽屉面板，配置 Agent 任务描述或分支判断规则 |
+| 主 Agent 智能生成 | 一键分析工作流 DAG 结构，自动为每个 Agent 节点生成贴合流程的 Prompt |
 | Prompt 引擎 | 关键词匹配 4 类内置模板，无匹配时 AI 自动生成结构化 Prompt |
 | 工作流运行 | DAG 拓扑解析 → 分层调度 → 串行/分支/并行执行 → 实时可视化 |
 | 日志系统 | 每次执行的完整日志持久化到 LocalStorage，支持分节点查看 I/O 详情 |
 | 蓝图管理 | 保存/加载/删除本地蓝图 JSON |
 | 撤销操作 | Ctrl+Z 撤销（最近 50 步），支持节点增删/连线/移动 |
 | 拓扑校验 | 实时检测环路、节点出入度约束、悬挂节点 |
+| API Key 管理 | 页面内配置 DeepSeek API Key，加密存储到服务端临时文件 |
 
 ## 节点类型
 
@@ -68,11 +74,12 @@ Multi-Agent-System-Maker/
 | 层面 | 选型 |
 |------|------|
 | 前端框架 | React 18 + TypeScript |
-| 可视化 | AntV X6（HTML 节点渲染） |
+| 可视化 | AntV X6 v2（SVG 节点渲染 + DOM 键盘快捷键） |
 | 状态管理 | Zustand |
 | 路由 | React Router v7（SPA） |
-| 构建 | Vite 8 |
+| 构建 | Vite 6 |
 | 后端 | FastAPI (Python 3.11) |
+| 加密 | cryptography (Fernet) |
 | LLM | DeepSeek（可扩展） |
 | 存储 | 浏览器 LocalStorage |
 
@@ -123,7 +130,13 @@ npm run dev
 
 ### 4. API Key 配置
 
-首次调用大模型前，需要设置 DeepSeek API Key：
+**方式一：页面内配置（推荐）**
+
+1. 在首页或编辑页点击 **⚙ 设置** 按钮
+2. 选择 LLM 供应商，输入 API Key，点击保存
+3. Key 状态实时显示，支持清除
+
+**方式二：命令行配置**
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/config/key \
@@ -131,7 +144,7 @@ curl -X POST http://127.0.0.1:8000/api/config/key \
   -d '{"api_key": "sk-xxxxxxxxxxxxxxxx"}'
 ```
 
-Key 加密后存入临时文件，**重启服务后自动丢失**，需重新设置。
+Key 经 Fernet 加密后存入服务端临时文件，**重启服务后自动丢失**，需重新设置。
 
 ## API 接口
 
@@ -140,8 +153,10 @@ Key 加密后存入临时文件，**重启服务后自动丢失**，需重新设
 | GET | `/api/health` | 健康检查 |
 | POST | `/api/config/key` | 设置 API Key |
 | GET | `/api/config/key` | 检查 Key 状态 |
+| DELETE | `/api/config/key` | 清除 Key |
 | POST | `/api/llm/chat` | 调用大模型对话 |
 | POST | `/api/prompt/generate` | 生成结构化 Prompt |
+| POST | `/api/workflow/analyze` | 主 Agent 分析工作流 DAG，智能生成各节点任务描述 |
 
 ## MVP 约束边界
 
