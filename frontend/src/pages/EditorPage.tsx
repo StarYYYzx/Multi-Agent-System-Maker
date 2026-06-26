@@ -5,6 +5,7 @@ import { useBlueprintStore } from "../store/blueprintStore";
 import CanvasEditor from "../components/canvas/CanvasEditor";
 import { NODE_STYLES } from "../components/canvas/nodes/nodeStyles";
 import type { NodeType } from "../engine/types";
+import { validateTopology } from "../engine/topology";
 import { api } from "../services/api";
 
 const NODE_TYPES: { type: NodeType; label: string }[] = [
@@ -30,6 +31,7 @@ export default function EditorPage() {
 
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiMsg, setAiMsg] = useState("");
+  const [topoError, setTopoError] = useState("");
 
   useEffect(() => {
     if (id && id !== current.id) {
@@ -68,7 +70,17 @@ export default function EditorPage() {
     [addNode]
   );
 
-  // ============ 智能生成 Prompt ============
+  // ============ 保存（含拓扑校验） ============
+
+  const handleSave = useCallback(() => {
+    const errors = validateTopology(current);
+    if (errors.length > 0) {
+      setTopoError(errors.join("\n"));
+      return;
+    }
+    setTopoError("");
+    saveCurrent();
+  }, [current, saveCurrent]);
 
   const handleAiGenerate = useCallback(async () => {
     const agentNodes = current.nodes.filter((n) => n.nodeType === "agent");
@@ -180,7 +192,7 @@ export default function EditorPage() {
             ↶ 撤销
           </button>
           <button
-            onClick={saveCurrent}
+            onClick={handleSave}
             style={{
               padding: "4px 16px",
               background: "#4a6cf7",
@@ -242,6 +254,42 @@ export default function EditorPage() {
           }}
         >
           {aiMsg}
+        </div>
+      )}
+
+      {/* 拓扑校验错误提示 */}
+      {topoError && (
+        <div
+          style={{
+            padding: "8px 16px",
+            background: "#fff2f0",
+            borderBottom: "1px solid #ffccc7",
+            fontSize: 12,
+            color: "#ff4d4f",
+            flexShrink: 0,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: 8,
+          }}
+        >
+          <pre style={{ whiteSpace: "pre-wrap", margin: 0, lineHeight: 1.5 }}>
+            {topoError}
+          </pre>
+          <button
+            onClick={() => setTopoError("")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#ff4d4f",
+              cursor: "pointer",
+              fontSize: 14,
+              flexShrink: 0,
+              paddingTop: 2,
+            }}
+          >
+            ×
+          </button>
         </div>
       )}
 

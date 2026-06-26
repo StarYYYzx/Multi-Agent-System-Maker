@@ -1,7 +1,8 @@
 /* 右侧节点配置抽屉 */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import type { NodeType, NodeConfig } from "../../engine/types";
 import { NODE_STYLES } from "../canvas/nodes/nodeStyles";
+import { useBlueprintStore } from "../../store/blueprintStore";
 
 interface NodeConfigDrawerProps {
   open: boolean;
@@ -24,6 +25,14 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
 }) => {
   const [taskDescription, setTaskDescription] = useState("");
   const [branchRule, setBranchRule] = useState("");
+
+  const edges = useBlueprintStore((s) => s.current.edges);
+
+  // 当前条件节点的出边
+  const nodeEdges = useMemo(() => {
+    if (nodeType !== "condition" || !nodeId) return [];
+    return edges.filter((e) => e.sourceNodeId === nodeId);
+  }, [nodeType, nodeId, edges]);
 
   useEffect(() => {
     if (open) {
@@ -130,7 +139,7 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
           </div>
         )}
 
-        {/* 条件分支节点：判断规则 */}
+        {/* 条件分支节点：判断规则 + 出边 label 编辑 */}
         {nodeType === "condition" && (
           <div>
             <label style={{ fontSize: 12, color: "#666", display: "block", marginBottom: 4 }}>分支判断规则</label>
@@ -152,11 +161,55 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
             <p style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
               大模型将根据此规则判断走哪条分支
             </p>
-            <div style={{ marginTop: 12, fontSize: 12, color: "#666" }}>
-              <strong>出口说明：</strong>
-              <div style={{ marginTop: 4 }}>上方连线 → 通过 (pass)</div>
-              <div>右侧连线 → 不通过 (reject)</div>
-            </div>
+
+            {/* 出边 label 编辑 */}
+            {nodeEdges.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, color: "#666", marginBottom: 6, fontWeight: 500 }}>
+                  出边标签（点击编辑）
+                </div>
+                {nodeEdges.map((edge, idx) => (
+                  <div
+                    key={edge.edgeId}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: "#999", minWidth: 14 }}>
+                      {idx + 1}.
+                    </span>
+                    <input
+                      value={edge.label || ""}
+                      onChange={(e) => {
+                        const store = useBlueprintStore.getState();
+                        store.updateEdgeLabel(edge.edgeId || "", e.target.value);
+                      }}
+                      placeholder="pass / reject"
+                      style={{
+                        flex: 1,
+                        padding: "4px 8px",
+                        border: "1px solid #d9d9d9",
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontFamily: "monospace",
+                      }}
+                    />
+                    <span style={{ fontSize: 10, color: "#bbb", fontFamily: "monospace" }}>
+                      → {edge.targetNodeId.slice(0, 10)}...
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {nodeEdges.length === 0 && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "#999", fontStyle: "italic" }}>
+                暂未连线。请从此节点拖出至少 2 条连线到下游节点。
+              </div>
+            )}
           </div>
         )}
 

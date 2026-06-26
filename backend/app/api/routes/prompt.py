@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import PromptGenerateRequest, PromptGenerateResponse
-from app.services.prompt_service import match_template, fill_template, auto_generate_prompt
+from app.services.prompt_service import match_template, fill_template, auto_generate_prompt, get_template_by_id
 
 router = APIRouter(prefix="/api/prompt", tags=["Prompt"])
 
@@ -15,8 +15,7 @@ async def generate_prompt(req: PromptGenerateRequest):
     """
     # 如果强制指定了模板，直接使用
     if req.force_template:
-        from app.services.prompt_service import TEMPLATES
-        tpl = TEMPLATES.get(req.force_template)
+        tpl = get_template_by_id(req.force_template)
         if not tpl:
             raise HTTPException(status_code=400, detail=f"未找到模板: {req.force_template}")
         return PromptGenerateResponse(

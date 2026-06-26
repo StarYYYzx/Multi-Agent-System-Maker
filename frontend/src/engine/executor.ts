@@ -95,7 +95,6 @@ async function executeWithTimeout(
     }
   } finally {
     clearTimeout(timer);
-    abortController.abort(); // 清理
   }
 }
 

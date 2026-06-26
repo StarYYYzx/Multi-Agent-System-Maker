@@ -10,7 +10,7 @@ import type { NodeRecord, ExecutionLog } from "../engine/types";
 import { NODE_STYLES } from "../components/canvas/nodes/nodeStyles";
 import type { NodeType } from "../engine/types";
 
-type RunStatus = "idle" | "input" | "running" | "done" | "error";
+type RunStatus = "idle" | "running" | "done" | "error";
 
 function nodeLabel(type: NodeType): string {
   return NODE_STYLES[type]?.label || type;
@@ -211,7 +211,6 @@ export default function ExecutePage() {
 function StatusBadge({ status }: { status: RunStatus }) {
   const config: Record<RunStatus, { label: string; color: string; bg: string }> = {
     idle: { label: "待输入", color: "#666", bg: "#f5f5f5" },
-    input: { label: "输入中", color: "#666", bg: "#f5f5f5" },
     running: { label: "运行中...", color: "#1677ff", bg: "#e6f4ff" },
     done: { label: "已完成", color: "#52c41a", bg: "#f6ffed" },
     error: { label: "失败", color: "#ff4d4f", bg: "#fff2f0" },

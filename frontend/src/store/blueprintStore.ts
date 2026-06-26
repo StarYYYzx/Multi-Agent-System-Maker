@@ -40,6 +40,7 @@ interface BlueprintStore {
   // 连线操作
   addEdge: (sourceNodeId: string, targetNodeId: string, label?: string) => void;
   removeEdge: (edgeId: string) => void;
+  updateEdgeLabel: (edgeId: string, label: string) => void;
 
   // 撤销
   undo: () => void;
@@ -189,6 +190,18 @@ export const useBlueprintStore = create<BlueprintStore>((set, get) => ({
         dirty: true,
       };
     });
+  },
+
+  updateEdgeLabel: (edgeId, label) => {
+    set((s) => ({
+      current: {
+        ...s.current,
+        edges: s.current.edges.map((e) =>
+          e.edgeId === edgeId ? { ...e, label } : e
+        ),
+      },
+      dirty: true,
+    }));
   },
 
   // --- 撤销 ---

@@ -62,6 +62,21 @@ TEMPLATES = {
 }
 
 
+def get_template_by_id(template_id: str) -> dict | None:
+    """按 template_id 查找模板（如 "template_copywriting"）
+
+    Args:
+        template_id: 模板 ID
+
+    Returns:
+        模板字典 或 None
+    """
+    for scene, tpl in TEMPLATES.items():
+        if tpl.get("template_id") == template_id:
+            return tpl
+    return None
+
+
 def match_template(task_description: str) -> Optional[str]:
     """关键词匹配场景模板
 

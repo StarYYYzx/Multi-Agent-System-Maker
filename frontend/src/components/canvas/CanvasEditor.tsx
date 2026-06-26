@@ -300,7 +300,29 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
     graph.on("edge:connected", ({ isNew, edge }: { isNew: boolean; edge: any }) => {
       if (!isNew) return;
       isInternalChange.current = true;
-      addEdge(edge.getSourceCellId() as string, edge.getTargetCellId() as string);
+
+      const sourceId = edge.getSourceCellId() as string;
+      const targetId = edge.getTargetCellId() as string;
+
+      // 条件分支节点自动分配 label（第1条=pass, 第2条=reject）
+      const sourceNode = current.nodes.find((n) => n.nodeId === sourceId);
+      let autoLabel: string | undefined;
+      if (sourceNode?.nodeType === "condition") {
+        const existingOutEdges = current.edges.filter((e) => e.sourceNodeId === sourceId);
+        if (existingOutEdges.length === 0) {
+          autoLabel = "pass";
+        } else if (existingOutEdges.length === 1) {
+          autoLabel = "reject";
+        }
+        // >=2 条出边时不分配 label
+      }
+
+      addEdge(sourceId, targetId, autoLabel);
+
+      // 更新 X6 边上的 label 显示
+      if (autoLabel) {
+        edge.setLabels([{ attrs: { text: { text: autoLabel, fontSize: 10, fill: "#666" } }, position: 0.5 }]);
+      }
     });
 
     // 键盘快捷键（X6 v2 用 DOM keydown 事件替代已移除的 bindKey）
