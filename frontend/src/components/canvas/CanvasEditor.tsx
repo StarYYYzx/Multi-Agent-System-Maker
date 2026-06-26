@@ -1,4 +1,7 @@
-/* X6 画布编辑器核心组件 */
+/* X6 画布编辑器核心组件
+
+   使用 X6 原生 SVG markup + attrs 渲染节点（避免 HTML foreignObject 兼容问题）。
+*/
 
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { Graph } from "@antv/x6";
@@ -7,62 +10,54 @@ import { NODE_STYLES, NODE_PORT_GROUPS } from "./nodes/nodeStyles";
 import NodeConfigDrawer from "./NodeConfigDrawer";
 import type { NodeType, NodeConfig, WorkflowNode } from "../../engine/types";
 
-// ============ 工具：生成节点 HTML ============
+// ============ 自定义节点形状注册 ============
 
-function buildNodeHTML(wfNode: WorkflowNode): string {
-  const style = NODE_STYLES[wfNode.nodeType];
-  const label = style.label;
-  const desc =
-    wfNode.config.taskDescription ||
-    wfNode.config.branchRule ||
-    "";
+const SHAPE_CIRCLE = "masm-circle";
+const SHAPE_RECT = "masm-rect";
+const SHAPE_DIAMOND = "masm-diamond";
 
-  const shortDesc = desc.length > 12 ? desc.slice(0, 12) + "..." : desc;
+/** 注册三个自定义 SVG 节点形状（在 Graph 实例化之前调用） */
+function registerCustomShapes() {
+  // 已注册则跳过
+  if ((Graph as any).__masmShapesRegistered) return;
+  (Graph as any).__masmShapesRegistered = true;
 
-  if (wfNode.nodeType === "condition") {
-    const size = style.width;
-    const half = size / 2;
-    return `
-      <div style="width:${size}px;height:${style.height}px;position:relative;display:flex;align-items:center;justify-content:center;">
-        <svg width="${size}" height="${style.height}" style="position:absolute;top:0;left:0;">
-          <polygon points="${half},4 ${size - 4},${style.height / 2} ${half},${style.height - 4} 4,${style.height / 2}"
-            fill="${style.bgColor}" stroke="${style.borderColor}" stroke-width="2"/>
-        </svg>
-        <div style="position:relative;z-index:1;color:${style.color};font-weight:600;font-size:12px;text-align:center;max-width:${size - 24}px;line-height:1.3;">
-          <div>${label}</div>
-          ${shortDesc ? `<div style="font-size:9px;font-weight:400;opacity:0.85;">${shortDesc}</div>` : ""}
-        </div>
-      </div>`;
-  }
-
-  if (wfNode.nodeType === "start" || wfNode.nodeType === "end") {
-    const size = style.width;
-    return `
-      <div style="width:${size}px;height:${size}px;border-radius:50%;background:${style.bgColor};border:2px solid ${style.borderColor};
-        display:flex;align-items:center;justify-content:center;color:${style.color};font-weight:600;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
-        ${label}
-      </div>`;
-  }
-
-  // 矩形节点（agent / parallel / merge）
-  return `
-    <div style="width:${style.width}px;height:${style.height}px;border-radius:8px;background:${style.bgColor};border:2px solid ${style.borderColor};
-      display:flex;flex-direction:column;align-items:center;justify-content:center;color:${style.color};font-weight:600;font-size:13px;box-shadow:0 2px 6px rgba(0,0,0,0.15);overflow:hidden;padding:4px 8px;">
-      <span>${label}</span>
-      ${shortDesc ? `<span style="font-size:10px;font-weight:400;opacity:0.85;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shortDesc}</span>` : ""}
-    </div>`;
-}
-
-function x6NodeFromWF(wfNode: WorkflowNode) {
-  const style = NODE_STYLES[wfNode.nodeType];
-  return {
-    id: wfNode.nodeId,
-    x: wfNode.position.x,
-    y: wfNode.position.y,
-    shape: "html",
-    width: style.width,
-    height: style.height,
-    html: buildNodeHTML(wfNode),
+  // 圆形节点（开始/结束）
+  Graph.registerNode(SHAPE_CIRCLE, {
+    inherit: "circle",
+    width: 80,
+    height: 80,
+    markup: [
+      { tagName: "circle", selector: "body" },
+      { tagName: "text", selector: "label" },
+      { tagName: "text", selector: "subLabel" },
+    ],
+    attrs: {
+      body: {
+        refCx: "50%",
+        refCy: "50%",
+        refR: "50%",
+        strokeWidth: 2,
+        filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
+      },
+      label: {
+        refX: "50%",
+        refY: "50%",
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fontSize: 14,
+        fontWeight: 600,
+      },
+      subLabel: {
+        refX: "50%",
+        refDy: 10,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fontSize: 10,
+        fontWeight: 400,
+        opacity: 0.85,
+      },
+    },
     ports: {
       groups: NODE_PORT_GROUPS,
       items: [
@@ -72,7 +67,173 @@ function x6NodeFromWF(wfNode: WorkflowNode) {
         { id: "right", group: "right" },
       ],
     },
+  });
+
+  // 矩形节点（Agent / 并行分支 / 汇总）
+  Graph.registerNode(SHAPE_RECT, {
+    inherit: "rect",
+    width: 140,
+    height: 60,
+    markup: [
+      { tagName: "rect", selector: "body" },
+      { tagName: "text", selector: "label" },
+      { tagName: "text", selector: "subLabel" },
+    ],
+    attrs: {
+      body: {
+        refWidth: "100%",
+        refHeight: "100%",
+        rx: 8,
+        ry: 8,
+        strokeWidth: 2,
+        filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
+      },
+      label: {
+        refX: "50%",
+        refY: 14,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fontSize: 13,
+        fontWeight: 600,
+      },
+      subLabel: {
+        refX: "50%",
+        refY: 14,
+        refDy: 16,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fontSize: 10,
+        fontWeight: 400,
+        opacity: 0.85,
+      },
+    },
+    ports: {
+      groups: NODE_PORT_GROUPS,
+      items: [
+        { id: "top", group: "top" },
+        { id: "bottom", group: "bottom" },
+        { id: "left", group: "left" },
+        { id: "right", group: "right" },
+      ],
+    },
+  });
+
+  // 菱形节点（条件分支）
+  Graph.registerNode(SHAPE_DIAMOND, {
+    width: 120,
+    height: 80,
+    markup: [
+      { tagName: "polygon", selector: "body" },
+      { tagName: "text", selector: "label" },
+      { tagName: "text", selector: "subLabel" },
+    ],
+    attrs: {
+      body: {
+        points: "60,4 116,40 60,76 4,40",
+        strokeWidth: 2,
+        filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
+      },
+      label: {
+        refX: "50%",
+        refY: 22,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fontSize: 12,
+        fontWeight: 600,
+      },
+      subLabel: {
+        refX: "50%",
+        refY: 22,
+        refDy: 16,
+        textAnchor: "middle",
+        dominantBaseline: "central",
+        fontSize: 10,
+        fontWeight: 400,
+        opacity: 0.85,
+      },
+    },
+    ports: {
+      groups: NODE_PORT_GROUPS,
+      items: [
+        { id: "top", group: "top" },
+        { id: "bottom", group: "bottom" },
+        { id: "left", group: "left" },
+        { id: "right", group: "right" },
+      ],
+    },
+  });
+}
+
+// ============ 节点数据映射 ============
+
+/** 节点类型 → X6 shape 名称 */
+function shapeForType(nodeType: NodeType): string {
+  switch (nodeType) {
+    case "start":
+    case "end":
+      return SHAPE_CIRCLE;
+    case "condition":
+      return SHAPE_DIAMOND;
+    default:
+      return SHAPE_RECT;
+  }
+}
+
+/** 从 WorkflowNode 构建 X6 节点数据 */
+function x6NodeFromWF(wfNode: WorkflowNode) {
+  const style = NODE_STYLES[wfNode.nodeType];
+  const desc = wfNode.config.taskDescription || wfNode.config.branchRule || "";
+
+  return {
+    id: wfNode.nodeId,
+    x: wfNode.position.x,
+    y: wfNode.position.y,
+    shape: shapeForType(wfNode.nodeType),
+    width: style.width,
+    height: style.height,
+    attrs: {
+      body: {
+        fill: style.bgColor,
+        stroke: style.borderColor,
+      },
+      label: {
+        text: style.label,
+        fill: style.color,
+      },
+      subLabel: {
+        text: truncate(desc, 12),
+        fill: style.color,
+      },
+    },
   };
+}
+
+/** 更新已有节点的 attrs 属性（配置变更时） */
+function updateX6NodeAttrs(graph: Graph, wfNode: WorkflowNode) {
+  const gNode = graph.getCellById(wfNode.nodeId);
+  if (!gNode || !gNode.isNode()) return;
+  const style = NODE_STYLES[wfNode.nodeType];
+  const desc = wfNode.config.taskDescription || wfNode.config.branchRule || "";
+
+  gNode.setAttrs({
+    body: {
+      fill: style.bgColor,
+      stroke: style.borderColor,
+    },
+    label: {
+      text: style.label,
+      fill: style.color,
+    },
+    subLabel: {
+      text: truncate(desc, 12),
+      fill: style.color,
+    },
+  } as any);
+}
+
+function truncate(s: string, max: number): string {
+  if (!s) return "";
+  return s.length > max ? s.slice(0, max) + "..." : s;
 }
 
 // ============ 主组件 ============
@@ -102,6 +263,8 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
   useEffect(() => {
     if (!canvasRef.current) return;
     if (graphRef.current) return;
+
+    registerCustomShapes();
 
     const graph = new Graph({
       container: canvasRef.current,
@@ -136,12 +299,10 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
     graph.on("edge:connected", ({ isNew, edge }: { isNew: boolean; edge: any }) => {
       if (!isNew) return;
       isInternalChange.current = true;
-      const srcId = edge.getSourceCellId() as string;
-      const tgtId = edge.getTargetCellId() as string;
-      addEdge(srcId, tgtId);
+      addEdge(edge.getSourceCellId() as string, edge.getTargetCellId() as string);
     });
 
-    // Delete 键删除
+    // Delete 键删除选中
     graph.bindKey("delete", () => {
       const cells = graph.getSelectedCells();
       if (cells.length > 0) {
@@ -157,7 +318,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
     // Ctrl+Z 撤销
     graph.bindKey("ctrl+z", () => undo());
 
-    // 节点移动结束
+    // 节点移动结束 → 同步位置
     graph.on("node:moved", ({ node }: { node: any }) => {
       isInternalChange.current = true;
       const pos = node.getPosition() as { x: number; y: number };
@@ -192,6 +353,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
       isInternalChange.current = false;
     });
 
+    // 窗口尺寸变化
     const onResize = () => {
       if (canvasRef.current && graph) {
         graph.resize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
@@ -231,17 +393,14 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
           if (gPos.x !== wfNode.position.x || gPos.y !== wfNode.position.y) {
             gNode.setPosition(wfNode.position);
           }
-          // 更新 HTML 内容
-          gNode.setPropByPath("html", buildNodeHTML(wfNode));
+          updateX6NodeAttrs(graph, wfNode);
         }
       }
     });
 
     // 删除节点
     graphNodeIds.forEach((gid) => {
-      if (!storeNodeIds.has(gid)) {
-        graph.removeCell(gid);
-      }
+      if (!storeNodeIds.has(gid)) graph.removeCell(gid);
     });
 
     // 新增连线
@@ -252,11 +411,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
           source: { cell: wfEdge.sourceNodeId, port: "bottom" },
           target: { cell: wfEdge.targetNodeId, port: "top" },
           attrs: {
-            line: {
-              stroke: "#999",
-              strokeWidth: 2,
-              targetMarker: { name: "block", size: 8, fill: "#999" },
-            },
+            line: { stroke: "#999", strokeWidth: 2, targetMarker: { name: "block", size: 8, fill: "#999" } },
           },
           labels: wfEdge.label
             ? [{ attrs: { text: { text: wfEdge.label, fontSize: 10, fill: "#666" } }, position: 0.5 }]
@@ -267,9 +422,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
 
     // 删除连线
     graphEdgeIds.forEach((gid) => {
-      if (!storeEdgeIds.has(gid)) {
-        graph.removeCell(gid);
-      }
+      if (!storeEdgeIds.has(gid)) graph.removeCell(gid);
     });
   }, [current.nodes, current.edges]);
 
@@ -282,16 +435,12 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
   }, [current.nodes, selectedNodeId, drawerOpen]);
 
   const handleConfigSave = useCallback(
-    (nodeId: string, config: Partial<NodeConfig>) => {
-      updateNodeConfig(nodeId, config);
-    },
+    (nodeId: string, config: Partial<NodeConfig>) => updateNodeConfig(nodeId, config),
     [updateNodeConfig]
   );
 
   const handleConfigDelete = useCallback(
-    (nodeId: string) => {
-      removeNode(nodeId);
-    },
+    (nodeId: string) => removeNode(nodeId),
     [removeNode]
   );
 

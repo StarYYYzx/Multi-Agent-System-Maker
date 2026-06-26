@@ -20,6 +20,7 @@ export const api = {
   setApiKey: (apiKey: string) =>
     request<unknown>("/api/config/key", { method: "POST", body: JSON.stringify({ api_key: apiKey }) }),
   checkApiKey: () => request<{ configured: boolean; message: string }>("/api/config/key"),
+  deleteApiKey: () => request<unknown>("/api/config/key", { method: "DELETE" }),
 
   // LLM
   chat: (messages: Array<{ role: string; content: string }>, temp = 0.7, maxTokens = 4096) =>

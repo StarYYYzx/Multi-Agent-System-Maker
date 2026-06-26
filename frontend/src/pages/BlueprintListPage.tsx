@@ -31,19 +31,35 @@ export default function BlueprintListPage() {
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 40 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <h1>我的工作流</h1>
-        <button
-          onClick={handleCreate}
-          style={{
-            padding: "8px 20px",
-            background: "#4a6cf7",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontSize: 14,
-          }}
-        >
-          + 新建蓝图
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => navigate("/settings")}
+            style={{
+              padding: "8px 16px",
+              background: "#fff",
+              color: "#666",
+              border: "1px solid #d9d9d9",
+              borderRadius: 6,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            ⚙ API 设置
+          </button>
+          <button
+            onClick={handleCreate}
+            style={{
+              padding: "8px 20px",
+              background: "#4a6cf7",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: 14,
+            }}
+          >
+            + 新建蓝图
+          </button>
+        </div>
       </div>
 
       {list.length === 0 ? (
