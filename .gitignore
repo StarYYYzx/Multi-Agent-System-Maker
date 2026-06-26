@@ -150,6 +150,8 @@ activemq-data/
 # Environments
 .env
 .envrc
+masm.key
+.key_store.enc
 .venv
 env/
 venv/
