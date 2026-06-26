@@ -112,26 +112,16 @@ function executeStart(_node: WorkflowNode, input: NodeMessage): ExecuteResult {
 async function executeAgent(node: WorkflowNode, input: NodeMessage): Promise<ExecuteResult> {
   const taskDesc = node.config.taskDescription || input.rawContent;
 
-  // Step 1: 生成 Prompt（优先使用 Auto Prompt Agent 已生成的）
-  let systemPrompt: string;
-  let userPrompt: string;
+  // Step 1: 生成 Prompt
+  let systemPrompt = "You are a helpful assistant.";
+  let userPrompt = taskDesc;
 
-  if (node.config.generatedSystemPrompt && node.config.generatedUserPrompt) {
-    // 直接使用 Auto Prompt Agent 预先生成的 Prompt
-    systemPrompt = node.config.generatedSystemPrompt;
-    userPrompt = node.config.generatedUserPrompt;
-  } else {
-    // 回退到运行时 Prompt 生成
-    systemPrompt = "You are a helpful assistant.";
-    userPrompt = taskDesc;
-    try {
-      const promptResult = await api.generatePrompt(taskDesc);
-      systemPrompt = promptResult.system_prompt;
-      userPrompt = promptResult.user_prompt;
-    } catch {
-      // Prompt 生成失败降级：直接使用原始任务描述
-    }
-
+  try {
+    const promptResult = await api.generatePrompt(taskDesc);
+    systemPrompt = promptResult.system_prompt;
+    userPrompt = promptResult.user_prompt;
+  } catch {
+    // Prompt 生成失败降级：直接使用原始任务描述
   }
 
   // Step 2: 调用 LLM

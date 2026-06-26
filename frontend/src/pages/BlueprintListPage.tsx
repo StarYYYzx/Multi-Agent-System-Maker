@@ -3,9 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useBlueprintStore } from "../store/blueprintStore";
 import { deleteBlueprint, loadLogs } from "../services/storage";
-
-import ApiKeyModal from "../components/common/ApiKeyModal";
-
 import type { ExecutionLog } from "../engine/types";
 
 export default function BlueprintListPage() {
@@ -14,9 +11,6 @@ export default function BlueprintListPage() {
   const refreshList = useBlueprintStore((s) => s.refreshList);
   const newBlueprint = useBlueprintStore((s) => s.newBlueprint);
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
-
-  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
-
 
   useEffect(() => {
     setLogs(loadLogs() as ExecutionLog[]);
@@ -37,38 +31,19 @@ export default function BlueprintListPage() {
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 40 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <h1>我的工作流</h1>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-
-            onClick={() => setApiKeyModalOpen(true)}
-            style={{
-              padding: "8px 16px",
-              color: "#666",
-              border: "1px solid #d9d9d9",
-              background: "#fff",
-              borderRadius: 6,
-              fontSize: 14,
-              cursor: "pointer",
-            }}
-            title="配置 LLM API Key"
-          >
-            ⚙ API Key
-
-          </button>
-          <button
-            onClick={handleCreate}
-            style={{
-              padding: "8px 20px",
-              background: "#4a6cf7",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              fontSize: 14,
-            }}
-          >
-            + 新建蓝图
-          </button>
-        </div>
+        <button
+          onClick={handleCreate}
+          style={{
+            padding: "8px 20px",
+            background: "#4a6cf7",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            fontSize: 14,
+          }}
+        >
+          + 新建蓝图
+        </button>
       </div>
 
       {list.length === 0 ? (
@@ -162,8 +137,6 @@ export default function BlueprintListPage() {
           </div>
         </div>
       )}
-
-      <ApiKeyModal open={apiKeyModalOpen} onClose={() => setApiKeyModalOpen(false)} />
     </div>
   );
 }
