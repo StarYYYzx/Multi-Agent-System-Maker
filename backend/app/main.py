@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import config, llm, prompt
+from app.api.routes import config, llm, prompt, workflow
 from app.core.config import APP_HOST, APP_PORT, APP_ENV
 
 app = FastAPI(
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(config.router)
 app.include_router(llm.router)
 app.include_router(prompt.router)
+app.include_router(workflow.router)
 
 
 @app.get("/api/health")

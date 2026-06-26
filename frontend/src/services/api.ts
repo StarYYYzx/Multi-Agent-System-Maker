@@ -45,4 +45,16 @@ export const api = {
 
   // Health
   health: () => request<{ status: string }>("/api/health"),
+
+  // Workflow
+  analyzeWorkflow: (blueprint: {
+    id: string;
+    name: string;
+    nodes: unknown[];
+    edges: unknown[];
+  }) =>
+    request<{ node_configs: Array<{ nodeId: string; taskDescription: string }>; summary: string }>(
+      "/api/workflow/analyze",
+      { method: "POST", body: JSON.stringify(blueprint) }
+    ),
 };

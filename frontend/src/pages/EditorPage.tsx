@@ -1,10 +1,11 @@
 /* 画布编辑页 */
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useBlueprintStore } from "../store/blueprintStore";
 import CanvasEditor from "../components/canvas/CanvasEditor";
 import { NODE_STYLES } from "../components/canvas/nodes/nodeStyles";
 import type { NodeType } from "../engine/types";
+import { api } from "../services/api";
 
 const NODE_TYPES: { type: NodeType; label: string }[] = [
   { type: "start", label: "→ 开始" },
@@ -24,7 +25,11 @@ export default function EditorPage() {
   const current = useBlueprintStore((s) => s.current);
   const saveCurrent = useBlueprintStore((s) => s.saveCurrent);
   const addNode = useBlueprintStore((s) => s.addNode);
+  const updateNodeConfig = useBlueprintStore((s) => s.updateNodeConfig);
   const undo = useBlueprintStore((s) => s.undo);
+
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiMsg, setAiMsg] = useState("");
 
   useEffect(() => {
     if (id && id !== current.id) {
@@ -62,6 +67,45 @@ export default function EditorPage() {
     },
     [addNode]
   );
+
+  // ============ 智能生成 Prompt ============
+
+  const handleAiGenerate = useCallback(async () => {
+    const agentNodes = current.nodes.filter((n) => n.nodeType === "agent");
+    if (agentNodes.length === 0) {
+      setAiMsg("画布上没有 Agent 节点，请先拖入 Agent 节点再使用智能生成。");
+      return;
+    }
+
+    setAiGenerating(true);
+    setAiMsg("");
+
+    try {
+      const result = await api.analyzeWorkflow({
+        id: current.id,
+        name: current.name,
+        nodes: current.nodes,
+        edges: current.edges,
+      });
+
+      // 将生成的 taskDescription 写入对应 Agent 节点
+      for (const cfg of result.node_configs) {
+        // 确保节点存在且为 agent 类型
+        const node = current.nodes.find(
+          (n) => n.nodeId === cfg.nodeId && n.nodeType === "agent"
+        );
+        if (node) {
+          updateNodeConfig(cfg.nodeId, { taskDescription: cfg.taskDescription });
+        }
+      }
+
+      setAiMsg(`已为 ${result.node_configs.length} 个 Agent 节点生成任务描述。${result.summary}`);
+    } catch (e: any) {
+      setAiMsg(`智能生成失败: ${e.message}`);
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [current, updateNodeConfig]);
 
   if (!id || current.id !== id) {
     return (
@@ -106,6 +150,21 @@ export default function EditorPage() {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button
+            onClick={() => navigate("/settings")}
+            style={{
+              padding: "4px 12px",
+              background: "#fff",
+              color: "#666",
+              border: "1px solid #d9d9d9",
+              borderRadius: 4,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+            title="配置 API Key"
+          >
+            ⚙
+          </button>
+          <button
             onClick={undo}
             style={{
               padding: "4px 12px",
@@ -148,8 +207,43 @@ export default function EditorPage() {
           >
             运行
           </button>
+          <button
+            onClick={handleAiGenerate}
+            disabled={aiGenerating}
+            style={{
+              padding: "4px 16px",
+              background: aiGenerating ? "#d9d9d9" : "#fa8c16",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              fontSize: 13,
+              cursor: aiGenerating ? "not-allowed" : "pointer",
+            }}
+            title="由主Agent分析流程并自动生成各Agent节点Prompt"
+          >
+            {aiGenerating ? "分析中..." : "🧠 智能生成"}
+          </button>
         </div>
       </div>
+
+      {/* AI 消息提示 */}
+      {aiMsg && (
+        <div
+          style={{
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            padding: "0 16px",
+            background: aiMsg.startsWith("智能生成失败") ? "#fff2f0" : "#f6ffed",
+            borderBottom: "1px solid #e0e0e0",
+            fontSize: 12,
+            color: aiMsg.startsWith("智能生成失败") ? "#ff4d4f" : "#52c41a",
+            flexShrink: 0,
+          }}
+        >
+          {aiMsg}
+        </div>
+      )}
 
       {/* 主区域：左侧面板 + 画布 */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
