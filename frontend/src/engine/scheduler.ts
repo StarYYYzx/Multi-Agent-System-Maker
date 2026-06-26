@@ -186,9 +186,11 @@ export async function runWorkflow(
           const decision = (condRecord.structuredOutput as any)?.branch || "pass";
           const successors = topo.successors.get(condNode.nodeId) || [];
           const edges = bp.edges.filter((e) => e.sourceNodeId === condNode.nodeId);
-          const chosenEdge = edges.find(
-            (e) => e.label === decision || e.label === undefined
-          );
+          const targetBranchIndex = decision === "pass" ? 0 : 1;
+          const chosenEdge =
+            edges.find((e) => e.label === decision) ||
+            edges.find((e) => e.branchIndex === targetBranchIndex) ||
+            edges.find((e) => e.label === undefined);
           const targetNodeId = chosenEdge?.targetNodeId || successors[0];
 
           if (targetNodeId) {
@@ -329,7 +331,8 @@ async function executeBranch(
     }
 
     if (node.nodeType === "merge") {
-      // 子路径中的汇总节点：跳过（主流程会处理）
+      // MVP 限制：嵌套并行+汇总场景中，子路径内的汇总节点跳过，由主流程在并行分支层级统一处理。
+      // 后续版本支持嵌套汇总时需在此处实现汇总逻辑。
       continue;
     }
 

@@ -205,6 +205,7 @@ export function validateTopology(bp: WorkflowBlueprint): string[] {
         if (outDeg !== 0) errors.push("结束节点不能有出边");
         break;
       case "agent":
+        if (inDeg === 0) errors.push(`Agent节点(${node.nodeId.slice(0, 10)})至少需要一条入边`);
         if (outDeg > 1) errors.push(`Agent节点(${node.nodeId.slice(0, 10)})在MVP中只能有一条出边`);
         if (outDeg === 0) errors.push(`Agent节点(${node.nodeId.slice(0, 10)})需要连接到下游节点`);
         break;

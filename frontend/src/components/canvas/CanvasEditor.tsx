@@ -291,6 +291,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
           args: { padding: 4, attrs: { stroke: "#4a6cf7", strokeWidth: 3 } },
         },
       },
+      keyboard: { enabled: true },
     });
 
     graphRef.current = graph;
@@ -302,21 +303,30 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
       addEdge(edge.getSourceCellId() as string, edge.getTargetCellId() as string);
     });
 
-    // Delete 键删除选中
-    graph.bindKey("delete", () => {
-      const cells = graph.getSelectedCells();
-      if (cells.length > 0) {
-        cells.forEach((cell: any) => {
-          if (cell.isNode()) removeNode(cell.id);
-          if (cell.isEdge()) removeEdge(cell.id);
-        });
-        setDrawerOpen(false);
-        setSelectedNodeId(null);
+    // 键盘快捷键（X6 v2 用 DOM keydown 事件替代已移除的 bindKey）
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete — 删除选中节点/边
+      if (e.key === "Delete") {
+        const cells = graph.getSelectedCells();
+        if (cells.length > 0) {
+          cells.forEach((cell: any) => {
+            if (cell.isNode()) removeNode(cell.id);
+            if (cell.isEdge()) removeEdge(cell.id);
+          });
+          setDrawerOpen(false);
+          setSelectedNodeId(null);
+        }
       }
-    });
-
-    // Ctrl+Z 撤销
-    graph.bindKey("ctrl+z", () => undo());
+      // Ctrl+Z — 撤销
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+        e.preventDefault();
+        undo();
+      }
+    };
+    canvasRef.current.addEventListener("keydown", handleKeyDown);
+    // 确保容器可聚焦以接收键盘事件
+    canvasRef.current.tabIndex = 0;
+    canvasRef.current.focus();
 
     // 节点移动结束 → 同步位置
     graph.on("node:moved", ({ node }: { node: any }) => {
@@ -363,6 +373,7 @@ const CanvasEditor: React.FC<CanvasEditorProps> = ({ canvasRef }) => {
 
     return () => {
       window.removeEventListener("resize", onResize);
+      canvasRef.current?.removeEventListener("keydown", handleKeyDown);
       graph.dispose();
       graphRef.current = null;
     };

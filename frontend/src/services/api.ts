@@ -20,16 +20,18 @@ export const api = {
   setApiKey: (apiKey: string) =>
     request<unknown>("/api/config/key", { method: "POST", body: JSON.stringify({ api_key: apiKey }) }),
   checkApiKey: () => request<{ configured: boolean; message: string }>("/api/config/key"),
+  deleteApiKey: () => request<unknown>("/api/config/key", { method: "DELETE" }),
 
   // LLM
-  chat: (messages: Array<{ role: string; content: string }>, temp = 0.7, maxTokens = 4096) =>
+  chat: (messages: Array<{ role: string; content: string }>, temp = 0.7, maxTokens = 4096, signal?: AbortSignal) =>
     request<{ content: string; model: string; usage: object }>("/api/llm/chat", {
       method: "POST",
       body: JSON.stringify({ messages, temperature: temp, max_tokens: maxTokens }),
+      signal,
     }),
 
   // Prompt
-  generatePrompt: (taskDescription: string, forceTemplate?: string) =>
+  generatePrompt: (taskDescription: string, forceTemplate?: string, signal?: AbortSignal) =>
     request<{
       system_prompt: string;
       user_prompt: string;
@@ -38,6 +40,7 @@ export const api = {
     }>("/api/prompt/generate", {
       method: "POST",
       body: JSON.stringify({ task_description: taskDescription, force_template: forceTemplate }),
+      signal,
     }),
 
   // Health

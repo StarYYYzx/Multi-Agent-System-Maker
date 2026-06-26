@@ -7,25 +7,22 @@ import os
 from cryptography.fernet import Fernet
 from app.core.config import KEY_FILE_PATH
 
-_KEY_FILE = "masm.key"
 _cipher = Fernet(b"55WXcgtk7EyDZs8L55KoKxcMH4PbxUgGB7__HL1l-Ic=")  # 预生成的 Fernet key
 
 
 def save_api_key(api_key: str) -> None:
     """加密并存储 API Key 到临时文件"""
     encrypted = _cipher.encrypt(api_key.encode("utf-8"))
-    file_path = os.path.join(os.path.dirname(__file__), "..", "..", _KEY_FILE)
-    with open(file_path, "wb") as f:
+    with open(KEY_FILE_PATH, "wb") as f:
         f.write(encrypted)
 
 
 def load_api_key() -> str | None:
     """从临时文件加载并解密 API Key"""
-    file_path = os.path.join(os.path.dirname(__file__), "..", "..", _KEY_FILE)
-    if not os.path.exists(file_path):
+    if not os.path.exists(KEY_FILE_PATH):
         return None
     try:
-        with open(file_path, "rb") as f:
+        with open(KEY_FILE_PATH, "rb") as f:
             encrypted = f.read()
         return _cipher.decrypt(encrypted).decode("utf-8")
     except Exception:
@@ -39,6 +36,5 @@ def is_key_configured() -> bool:
 
 def clear_api_key() -> None:
     """清除已存储的 API Key（重启时自动丢失）"""
-    file_path = os.path.join(os.path.dirname(__file__), "..", "..", _KEY_FILE)
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    if os.path.exists(KEY_FILE_PATH):
+        os.remove(KEY_FILE_PATH)

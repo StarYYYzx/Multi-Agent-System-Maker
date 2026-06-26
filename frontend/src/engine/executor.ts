@@ -74,15 +74,16 @@ async function executeWithTimeout(
 ): Promise<ExecuteResult> {
   const abortController = new AbortController();
   const timer = setTimeout(() => abortController.abort(), timeoutMs);
+  const signal = abortController.signal;
 
   try {
     switch (node.nodeType) {
       case "start":
         return executeStart(node, input);
       case "agent":
-        return await executeAgent(node, input);
+        return await executeAgent(node, input, signal);
       case "condition":
-        return await executeCondition(node, input);
+        return await executeCondition(node, input, signal);
       case "parallel":
         return executeParallel(node, input);
       case "merge":
@@ -109,7 +110,7 @@ function executeStart(_node: WorkflowNode, input: NodeMessage): ExecuteResult {
   };
 }
 
-async function executeAgent(node: WorkflowNode, input: NodeMessage): Promise<ExecuteResult> {
+async function executeAgent(node: WorkflowNode, input: NodeMessage, signal?: AbortSignal): Promise<ExecuteResult> {
   const taskDesc = node.config.taskDescription || input.rawContent;
 
   // Step 1: 生成 Prompt
@@ -117,7 +118,7 @@ async function executeAgent(node: WorkflowNode, input: NodeMessage): Promise<Exe
   let userPrompt = taskDesc;
 
   try {
-    const promptResult = await api.generatePrompt(taskDesc);
+    const promptResult = await api.generatePrompt(taskDesc, undefined, signal);
     systemPrompt = promptResult.system_prompt;
     userPrompt = promptResult.user_prompt;
   } catch {
@@ -130,7 +131,7 @@ async function executeAgent(node: WorkflowNode, input: NodeMessage): Promise<Exe
   const chatResult = await api.chat([
     { role: "system", content: systemPrompt },
     { role: "user", content: userPrompt },
-  ]);
+  ], 0.7, 4096, signal);
 
   // Step 3: 尝试解析 JSON 输出
   let output: unknown = { result: chatResult.content };
@@ -150,7 +151,7 @@ async function executeAgent(node: WorkflowNode, input: NodeMessage): Promise<Exe
   };
 }
 
-async function executeCondition(node: WorkflowNode, input: NodeMessage): Promise<ExecuteResult> {
+async function executeCondition(node: WorkflowNode, input: NodeMessage, signal?: AbortSignal): Promise<ExecuteResult> {
   const branchRule = node.config.branchRule || "判断输入内容是否合格";
   const content = typeof input.structuredData === "object"
     ? JSON.stringify(input.structuredData)
@@ -160,7 +161,7 @@ async function executeCondition(node: WorkflowNode, input: NodeMessage): Promise
 
   let decision = "pass";
   try {
-    const result = await api.chat([{ role: "user", content: conditionPrompt }], 0.1);
+    const result = await api.chat([{ role: "user", content: conditionPrompt }], 0.1, 4096, signal);
     const cleaned = result.content.trim().toLowerCase();
     if (cleaned.includes("reject")) {
       decision = "reject";
