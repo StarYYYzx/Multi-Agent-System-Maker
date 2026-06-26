@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useBlueprintStore } from "../store/blueprintStore";
 import { deleteBlueprint, loadLogs } from "../services/storage";
+
 import ApiKeyModal from "../components/common/ApiKeyModal";
+
 import type { ExecutionLog } from "../engine/types";
 
 export default function BlueprintListPage() {
@@ -12,7 +14,9 @@ export default function BlueprintListPage() {
   const refreshList = useBlueprintStore((s) => s.refreshList);
   const newBlueprint = useBlueprintStore((s) => s.newBlueprint);
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
+
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+
 
   useEffect(() => {
     setLogs(loadLogs() as ExecutionLog[]);
@@ -35,6 +39,7 @@ export default function BlueprintListPage() {
         <h1>我的工作流</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <button
+
             onClick={() => setApiKeyModalOpen(true)}
             style={{
               padding: "8px 16px",
@@ -48,6 +53,7 @@ export default function BlueprintListPage() {
             title="配置 LLM API Key"
           >
             ⚙ API Key
+
           </button>
           <button
             onClick={handleCreate}

@@ -8,7 +8,9 @@ from typing import Optional, Any
 
 class KeyConfigRequest(BaseModel):
     api_key: str = Field(..., description="用户提供的 API Key")
+
     provider: str = Field(default="deepseek", description="LLM 厂商（deepseek）")
+
 
 
 class KeyStatusResponse(BaseModel):
@@ -44,7 +46,7 @@ class PromptGenerateResponse(BaseModel):
     output_schema: dict = Field(default_factory=dict, description="强制输出JSON格式约束")
 
 
-# === 工作流级 Prompt 自动生成 ===
+
 
 class WorkflowPromptNode(BaseModel):
     """工作流中一个 Agent 节点的描述信息"""
@@ -69,6 +71,7 @@ class AgentPromptAssignment(BaseModel):
 class WorkflowPromptResponse(BaseModel):
     assignments: list[AgentPromptAssignment]
     model: str = Field(default="deepseek-chat")
+
 
 
 # === 通用响应 ===

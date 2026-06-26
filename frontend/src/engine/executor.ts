@@ -131,6 +131,7 @@ async function executeAgent(node: WorkflowNode, input: NodeMessage): Promise<Exe
     } catch {
       // Prompt 生成失败降级：直接使用原始任务描述
     }
+
   }
 
   // Step 2: 调用 LLM

@@ -3,6 +3,7 @@
 双模式结合：
 1. 关键词匹配 → 命中模板 → 自动填充
 2. 无匹配模板 → 调用大模型自动生成
+
 3. 工作流级 → 分析全局 DAG 上下文，为每个 Agent 生成专属 Prompt
 """
 
@@ -10,6 +11,7 @@ import re
 import json
 from typing import Optional
 from app.models.schemas import AgentPromptAssignment, WorkflowPromptNode
+
 
 # === 场景关键词表 ===
 KEYWORD_TABLE = {
@@ -154,6 +156,7 @@ async def auto_generate_prompt(task_description: str) -> dict:
         }
 
 
+
 async def generate_workflow_prompts(
     workflow_name: str,
     workflow_summary: str,
@@ -267,3 +270,4 @@ async def generate_workflow_prompts(
                 )
 
         return fallback
+

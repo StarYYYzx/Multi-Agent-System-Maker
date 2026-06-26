@@ -114,7 +114,9 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               onChange={(e) => setTaskDescription(e.target.value)}
               onBlur={handleBlur}
               placeholder="用自然语言描述这个Agent的任务..."
+
               rows={4}
+
               style={{
                 width: "100%",
                 padding: 8,
@@ -127,6 +129,7 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
             <p style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
               系统将自动匹配模板或生成结构化 Prompt
             </p>
+
 
             {/* 自动生成的 Prompt（由 Auto Prompt Agent 生成） */}
             {(config.generatedSystemPrompt || config.generatedUserPrompt) && (
@@ -202,6 +205,7 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
                 )}
               </div>
             )}
+
           </div>
         )}
 

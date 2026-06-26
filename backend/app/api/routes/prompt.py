@@ -1,6 +1,7 @@
 """Prompt 生成接口"""
 
 from fastapi import APIRouter, HTTPException
+
 from app.models.schemas import (
     PromptGenerateRequest,
     PromptGenerateResponse,
@@ -13,6 +14,7 @@ from app.services.prompt_service import (
     auto_generate_prompt,
     generate_workflow_prompts,
 )
+
 
 router = APIRouter(prefix="/api/prompt", tags=["Prompt"])
 
@@ -50,6 +52,7 @@ async def generate_prompt(req: PromptGenerateRequest):
         raise HTTPException(status_code=502, detail=f"Prompt 自动生成失败: {str(e)}")
 
 
+
 @router.post("/generate-for-workflow", response_model=WorkflowPromptResponse)
 async def generate_prompts_for_workflow(req: WorkflowPromptRequest):
     """分析整个工作流结构，为所有 Agent 节点自动生成并分配 Prompt
@@ -66,3 +69,4 @@ async def generate_prompts_for_workflow(req: WorkflowPromptRequest):
         return WorkflowPromptResponse(assignments=assignments)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"工作流 Prompt 自动生成失败: {str(e)}")
+

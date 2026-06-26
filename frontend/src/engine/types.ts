@@ -27,9 +27,11 @@ export interface NodeConfig {
   taskDescription?: string;   // Agent节点：用户填写的任务
   branchRule?: string;        // 分支节点：自然语言判断条件
   templateId?: string;        // 匹配到的Prompt模板ID
+
   generatedSystemPrompt?: string;  // Auto Prompt Agent生成的System Prompt
   generatedUserPrompt?: string;    // Auto Prompt Agent生成的User Prompt
   outputSchema?: Record<string, unknown>;  // Auto Prompt Agent分配的输出格式约束
+
 }
 
 // === 连线 ===
