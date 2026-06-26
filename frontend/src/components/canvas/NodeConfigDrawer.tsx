@@ -114,7 +114,9 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
               onChange={(e) => setTaskDescription(e.target.value)}
               onBlur={handleBlur}
               placeholder="用自然语言描述这个Agent的任务..."
-              rows={6}
+
+              rows={4}
+
               style={{
                 width: "100%",
                 padding: 8,
@@ -127,6 +129,83 @@ const NodeConfigDrawer: React.FC<NodeConfigDrawerProps> = ({
             <p style={{ fontSize: 11, color: "#999", marginTop: 4 }}>
               系统将自动匹配模板或生成结构化 Prompt
             </p>
+
+
+            {/* 自动生成的 Prompt（由 Auto Prompt Agent 生成） */}
+            {(config.generatedSystemPrompt || config.generatedUserPrompt) && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 12,
+                  background: "#f6ffed",
+                  borderRadius: 6,
+                  border: "1px solid #b7eb8f",
+                }}
+              >
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#389e0d", marginBottom: 8 }}>
+                  🤖 Auto Prompt Agent 已生成
+                </div>
+
+                {config.generatedSystemPrompt && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: "#999", marginBottom: 2 }}>System Prompt:</div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        background: "#fff",
+                        padding: "6px 8px",
+                        borderRadius: 4,
+                        border: "1px solid #e8e8e8",
+                        whiteSpace: "pre-wrap",
+                        maxHeight: 100,
+                        overflow: "auto",
+                      }}
+                    >
+                      {config.generatedSystemPrompt}
+                    </div>
+                  </div>
+                )}
+
+                {config.generatedUserPrompt && (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: "#999", marginBottom: 2 }}>User Prompt:</div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        background: "#fff",
+                        padding: "6px 8px",
+                        borderRadius: 4,
+                        border: "1px solid #e8e8e8",
+                        whiteSpace: "pre-wrap",
+                        maxHeight: 100,
+                        overflow: "auto",
+                      }}
+                    >
+                      {config.generatedUserPrompt}
+                    </div>
+                  </div>
+                )}
+
+                {config.outputSchema && Object.keys(config.outputSchema).length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 11, color: "#999", marginBottom: 2 }}>输出格式约束:</div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        background: "#fff",
+                        padding: "6px 8px",
+                        borderRadius: 4,
+                        border: "1px solid #e8e8e8",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {JSON.stringify(config.outputSchema, null, 1)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
 

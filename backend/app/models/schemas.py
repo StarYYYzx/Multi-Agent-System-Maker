@@ -9,6 +9,9 @@ from typing import Optional, Any
 class KeyConfigRequest(BaseModel):
     api_key: str = Field(..., description="用户提供的 API Key")
 
+    provider: str = Field(default="deepseek", description="LLM 厂商（deepseek）")
+
+
 
 class KeyStatusResponse(BaseModel):
     configured: bool
@@ -41,6 +44,34 @@ class PromptGenerateResponse(BaseModel):
     user_prompt: str = Field(..., description="生成的 User Prompt")
     template_id: Optional[str] = Field(default=None, description="匹配到的模板ID，无匹配则为None")
     output_schema: dict = Field(default_factory=dict, description="强制输出JSON格式约束")
+
+
+
+
+class WorkflowPromptNode(BaseModel):
+    """工作流中一个 Agent 节点的描述信息"""
+    node_id: str = Field(..., description="节点ID")
+    task_description: str = Field(default="", description="任务描述")
+
+
+class WorkflowPromptRequest(BaseModel):
+    """分析整个工作流，为所有 Agent 节点生成 Prompt"""
+    workflow_name: str = Field(default="未命名工作流")
+    workflow_summary: str = Field(default="", description="工作流结构概览（自然语言）")
+    agent_nodes: list[WorkflowPromptNode] = Field(..., description="Agent 节点列表")
+
+
+class AgentPromptAssignment(BaseModel):
+    node_id: str
+    system_prompt: str
+    user_prompt: str
+    output_schema: dict = Field(default_factory=dict)
+
+
+class WorkflowPromptResponse(BaseModel):
+    assignments: list[AgentPromptAssignment]
+    model: str = Field(default="deepseek-chat")
+
 
 
 # === 通用响应 ===

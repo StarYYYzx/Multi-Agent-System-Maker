@@ -17,10 +17,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 // === Config ===
 export const api = {
   // API Key
-  setApiKey: (apiKey: string) =>
-    request<unknown>("/api/config/key", { method: "POST", body: JSON.stringify({ api_key: apiKey }) }),
+  setApiKey: (apiKey: string, provider = "deepseek") =>
+    request<unknown>("/api/config/key", { method: "POST", body: JSON.stringify({ api_key: apiKey, provider }) }),
   checkApiKey: () => request<{ configured: boolean; message: string }>("/api/config/key"),
-  deleteApiKey: () => request<unknown>("/api/config/key", { method: "DELETE" }),
 
   // LLM
   chat: (messages: Array<{ role: string; content: string }>, temp = 0.7, maxTokens = 4096) =>
@@ -39,6 +38,25 @@ export const api = {
     }>("/api/prompt/generate", {
       method: "POST",
       body: JSON.stringify({ task_description: taskDescription, force_template: forceTemplate }),
+    }),
+
+  // 工作流级 Prompt 自动生成（Auto Prompt Agent）
+  generateWorkflowPrompts: (params: {
+    workflow_name: string;
+    workflow_summary: string;
+    agent_nodes: Array<{ node_id: string; task_description: string }>;
+  }) =>
+    request<{
+      assignments: Array<{
+        node_id: string;
+        system_prompt: string;
+        user_prompt: string;
+        output_schema: Record<string, unknown>;
+      }>;
+      model: string;
+    }>("/api/prompt/generate-for-workflow", {
+      method: "POST",
+      body: JSON.stringify(params),
     }),
 
   // Health

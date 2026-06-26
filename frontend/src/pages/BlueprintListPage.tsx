@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useBlueprintStore } from "../store/blueprintStore";
 import { deleteBlueprint, loadLogs } from "../services/storage";
+
+import ApiKeyModal from "../components/common/ApiKeyModal";
+
 import type { ExecutionLog } from "../engine/types";
 
 export default function BlueprintListPage() {
@@ -11,6 +14,9 @@ export default function BlueprintListPage() {
   const refreshList = useBlueprintStore((s) => s.refreshList);
   const newBlueprint = useBlueprintStore((s) => s.newBlueprint);
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
+
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+
 
   useEffect(() => {
     setLogs(loadLogs() as ExecutionLog[]);
@@ -33,18 +39,21 @@ export default function BlueprintListPage() {
         <h1>我的工作流</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <button
-            onClick={() => navigate("/settings")}
+
+            onClick={() => setApiKeyModalOpen(true)}
             style={{
               padding: "8px 16px",
-              background: "#fff",
               color: "#666",
               border: "1px solid #d9d9d9",
+              background: "#fff",
               borderRadius: 6,
-              fontSize: 13,
+              fontSize: 14,
               cursor: "pointer",
             }}
+            title="配置 LLM API Key"
           >
-            ⚙ API 设置
+            ⚙ API Key
+
           </button>
           <button
             onClick={handleCreate}
@@ -153,6 +162,8 @@ export default function BlueprintListPage() {
           </div>
         </div>
       )}
+
+      <ApiKeyModal open={apiKeyModalOpen} onClose={() => setApiKeyModalOpen(false)} />
     </div>
   );
 }

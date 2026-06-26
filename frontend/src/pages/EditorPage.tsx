@@ -1,9 +1,11 @@
 /* 画布编辑页 */
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useBlueprintStore } from "../store/blueprintStore";
 import CanvasEditor from "../components/canvas/CanvasEditor";
+import ApiKeyModal from "../components/common/ApiKeyModal";
 import { NODE_STYLES } from "../components/canvas/nodes/nodeStyles";
+import { api } from "../services/api";
 import type { NodeType } from "../engine/types";
 
 const NODE_TYPES: { type: NodeType; label: string }[] = [
@@ -25,6 +27,11 @@ export default function EditorPage() {
   const saveCurrent = useBlueprintStore((s) => s.saveCurrent);
   const addNode = useBlueprintStore((s) => s.addNode);
   const undo = useBlueprintStore((s) => s.undo);
+  const updateNodeConfig = useBlueprintStore((s) => s.updateNodeConfig);
+
+  const [generating, setGenerating] = useState(false);
+  const [genMsg, setGenMsg] = useState("");
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
 
   useEffect(() => {
     if (id && id !== current.id) {
@@ -62,6 +69,60 @@ export default function EditorPage() {
     },
     [addNode]
   );
+
+  // ============ Auto Prompt Agent：分析工作流 DAG，为每个 Agent 生成定制 Prompt ============
+
+  const handleAutoGeneratePrompts = useCallback(async () => {
+    const agentNodes = current.nodes.filter((n) => n.nodeType === "agent");
+    if (agentNodes.length === 0) {
+      setGenMsg("工作流中还没有 Agent 节点，请先拖拽添加");
+      return;
+    }
+
+    setGenerating(true);
+    setGenMsg("");
+
+    try {
+      // 生成工作流结构概览（自然语言）
+      const parts: string[] = [];
+      for (let i = 0; i < current.nodes.length; i++) {
+        const n = current.nodes[i];
+        const label = NODE_STYLES[n.nodeType]?.label || n.nodeType;
+        parts.push(`第${i + 1}步 -> [${label}]${n.config.taskDescription || n.config.branchRule || ""}`);
+      }
+      const summary = parts.join(" → ");
+
+      const agentNodeData = agentNodes.map((n) => ({
+        node_id: n.nodeId,
+        task_description: n.config.taskDescription || "",
+      }));
+
+      const res = await api.generateWorkflowPrompts({
+        workflow_name: current.name,
+        workflow_summary: summary,
+        agent_nodes: agentNodeData,
+      });
+
+      // 将生成的 Prompt 分配到各 Agent 节点
+      let assignedCount = 0;
+      for (const assignment of res.assignments) {
+        if (assignment.node_id) {
+          updateNodeConfig(assignment.node_id, {
+            generatedSystemPrompt: assignment.system_prompt,
+            generatedUserPrompt: assignment.user_prompt,
+            outputSchema: assignment.output_schema,
+          });
+          assignedCount++;
+        }
+      }
+
+      setGenMsg(`已为 ${assignedCount} 个 Agent 节点生成专属 Prompt`);
+    } catch (e: any) {
+      setGenMsg("生成失败: " + (e.message || "未知错误"));
+    } finally {
+      setGenerating(false);
+    }
+  }, [current.nodes, current.name, updateNodeConfig]);
 
   if (!id || current.id !== id) {
     return (
@@ -121,6 +182,37 @@ export default function EditorPage() {
             ↶ 撤销
           </button>
           <button
+            onClick={handleAutoGeneratePrompts}
+            disabled={generating}
+            style={{
+              padding: "4px 12px",
+              background: generating ? "#e8d5b0" : "#fa8c16",
+              color: "#fff",
+              border: "none",
+              borderRadius: 4,
+              fontSize: 13,
+              cursor: generating ? "not-allowed" : "pointer",
+            }}
+            title="由 Auto Prompt Agent 分析工作流结构，为每个Agent自动生成专属Prompt"
+          >
+            {generating ? "生成中..." : "🤖 自动生成Prompt"}
+          </button>
+          <button
+            onClick={() => setApiKeyModalOpen(true)}
+            style={{
+              padding: "4px 12px",
+              background: "#fff",
+              color: "#666",
+              border: "1px solid #d9d9d9",
+              borderRadius: 4,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+            title="配置 LLM API Key"
+          >
+            ⚙ Key
+          </button>
+          <button
             onClick={saveCurrent}
             style={{
               padding: "4px 16px",
@@ -150,6 +242,21 @@ export default function EditorPage() {
           </button>
         </div>
       </div>
+
+      {/* 自动生成 Prompt 消息提示 */}
+      {genMsg && (
+        <div
+          style={{
+            padding: "6px 16px",
+            fontSize: 12,
+            background: genMsg.includes("失败") ? "#fff2f0" : "#f6ffed",
+            color: genMsg.includes("失败") ? "#ff4d4f" : "#389e0d",
+            borderBottom: "1px solid #e0e0e0",
+          }}
+        >
+          {genMsg}
+        </div>
+      )}
 
       {/* 主区域：左侧面板 + 画布 */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
@@ -225,6 +332,8 @@ export default function EditorPage() {
           <CanvasEditor canvasRef={canvasContainerRef} />
         </div>
       </div>
+
+      <ApiKeyModal open={apiKeyModalOpen} onClose={() => setApiKeyModalOpen(false)} />
     </div>
   );
 }
