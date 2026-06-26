@@ -5,6 +5,7 @@ import BlueprintListPage from "./pages/BlueprintListPage";
 import EditorPage from "./pages/EditorPage";
 import ExecutePage from "./pages/ExecutePage";
 import LogDetailPage from "./pages/LogDetailPage";
+import SettingsPage from "./pages/SettingsPage";
 import "./index.css";
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/editor/:id" element={<EditorPage />} />
         <Route path="/execute/:id" element={<ExecutePage />} />
         <Route path="/logs/:logId" element={<LogDetailPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
     </BrowserRouter>
   );
